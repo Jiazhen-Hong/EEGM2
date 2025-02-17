@@ -1,4 +1,4 @@
-# EEGMamba
+# EEGM2
 
 ## Overview
 **EEGM2** shows superior performance on long-sequence tasks, where conventional models struggle.
