@@ -1,5 +1,4 @@
 """
-Example of BrainMamba1_parallel with multi-scale input embedding (kernel_sizes=1,3,7).
 Created on Mon Dec 21 04:12:39 2024
 
 @author: jiazhen@emotiv.com
@@ -7,31 +6,16 @@ Created on Mon Dec 21 04:12:39 2024
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mamba_ssm import Mamba2  # ensure you have mamba_ssm installed
 
-# ------------------------------------------------------------------------------
-# 1) 多分支输入嵌入：并行卷积核大小分别为 1, 3, 7
-# ------------------------------------------------------------------------------
 class MultiBranchInputEmbedding(nn.Module):
-    """
-    同时用 kernel_size = 1, 3, 7 的三支卷积；
-    最后拼接通道后，用一个 1x1 卷积做融合，得到与 out_channels 相同的通道数。
-    """
     def __init__(self, in_channels, out_channels):
         super(MultiBranchInputEmbedding, self).__init__()
-        # 三个并行分支
         self.branch1 = nn.Conv1d(in_channels, out_channels, kernel_size=1, padding=0)
         self.branch3 = nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
         self.branch7 = nn.Conv1d(in_channels, out_channels, kernel_size=7, padding=3)
-
-        # 用 1x1 卷积把 3*out_channels -> out_channels
         self.fuse = nn.Conv1d(3 * out_channels, out_channels, kernel_size=1, padding=0)
 
     def forward(self, x):
-        """
-        x 形状: [batch, in_channels, time]
-        输出形状: [batch, out_channels, time]
-        """
         b1 = self.branch1(x)  # => [B, out_channels, T]
         b3 = self.branch3(x)  # => [B, out_channels, T]
         b7 = self.branch7(x)  # => [B, out_channels, T]
@@ -42,59 +26,33 @@ class MultiBranchInputEmbedding(nn.Module):
     
 
 
-# ------------------------------------------------------------------------------
-# 2) Mamba2 模型，与之前相同
-# ------------------------------------------------------------------------------
 class SelfSupervisedAttnModel(nn.Module):
-    """
-    与 SelfSupervisedMambaModel 类似的接口：
-      - 输入: x, shape=(B,T,d_model)
-      - 输出: shape=(B,T,d_model)
-    不同之处：这里用 multihead self-attention 做映射。
-    """
     def __init__(self, d_model, n_heads=4, dropout=0.1):
         super().__init__()
         self.mha = nn.MultiheadAttention(
             embed_dim=d_model,
             num_heads=n_heads,
             dropout=dropout,
-            batch_first=True  # 让输入/输出是 (B,T,C)
+            batch_first=True 
         )
         self.norm = nn.LayerNorm(d_model)
-        # 你也可以再加一个 FFN 等, 看你需求
 
     def forward(self, x):
-        """
-        x: (B,T,d_model)
-        return: (B,T,d_model)
-        """
         residual = x
-        # 做自注意力
         attn_out, _ = self.mha(x, x, x)  # self-attn
         x = self.norm(attn_out + residual)
         return x
 
-# ------------------------------------------------------------------------------
-# 3) 主体网络：BrainMamba1_parallel，替换 input_embedding 为多分支结构
-# ------------------------------------------------------------------------------
 from torch.nn import functional as F
-# 假设你把 SelfSupervisedAttnModel 放到同一个文件或别的地方
-# from your_attn_file import SelfSupervisedAttnModel
 
-class BrainAttn_multibranch(nn.Module):
-    """
-    与 BrainMamba2_multibranch 一样的 Encoder-Decoder骨架。
-    但把 SelfSupervisedMambaModel 换成 SelfSupervisedAttnModel
-    """
+class EEGM2_S5(nn.Module):
     def __init__(self, in_channels, out_channels, d_state, d_conv, expand, scale_factor=1):
         super().__init__()
         self.scale_factor = scale_factor
         base_channels = 64 // self.scale_factor
 
-        # 多分支输入嵌入
         self.input_embedding = MultiBranchInputEmbedding(in_channels, base_channels)
 
-        # --- 3层 Encoder ---
         # Encoder1
         self.encoder1 = nn.Sequential(
             nn.Linear(base_channels, base_channels),
@@ -110,14 +68,13 @@ class BrainAttn_multibranch(nn.Module):
         self.encoder3 = nn.Conv1d(128 // self.scale_factor, 256 // self.scale_factor, kernel_size=3, padding=1)
         self.pool3 = nn.MaxPool1d(kernel_size=2, stride=2)
 
-        # --- Bottleneck ---
+
         self.bottleneck = nn.Sequential(
             nn.Linear(256 // self.scale_factor, 256 // self.scale_factor),
             SelfSupervisedAttnModel(d_model=256 // self.scale_factor, n_heads=4, dropout=0.1),
             nn.Linear(256 // self.scale_factor, 256 // self.scale_factor),
         )
 
-        # --- 3层 Decoder ---
         self.decoder3 = nn.Conv1d((256 // self.scale_factor)+(256 // self.scale_factor),
                                   256 // self.scale_factor, kernel_size=3, padding=1)
         self.decodeAttn3 = SelfSupervisedAttnModel(d_model=256 // self.scale_factor, n_heads=4, dropout=0.1)
@@ -129,12 +86,9 @@ class BrainAttn_multibranch(nn.Module):
         self.decoder1 = nn.Conv1d((64 // self.scale_factor)+(128 // self.scale_factor),
                                   64 // self.scale_factor, kernel_size=3, padding=1)
 
-        # 输出embedding
         self.onput_embedding = nn.Conv1d(64 // self.scale_factor, out_channels, kernel_size=1)
 
     def forward(self, x):
-        # 与 BrainMamba2_multibranch 一样
-        # 1) input embedding
         x = self.input_embedding(x) # => (B, base_channels, T)
 
         # 2) encoder1
@@ -151,7 +105,6 @@ class BrainAttn_multibranch(nn.Module):
         x3 = self.encoder3(x2p)   # => (B,256, T/4)
         x3p = self.pool3(x3)      # => (B,256, T/8)
 
-        # 5) bottleneck
         x3p = x3p.permute(0,2,1)  # => (B, T/8, 256)
         bottleneck = self.bottleneck(x3p)  # => (B, T/8, 256)
         bottleneck = bottleneck.permute(0,2,1)  # => (B,256, T/8)

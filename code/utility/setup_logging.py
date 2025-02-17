@@ -1,3 +1,8 @@
+"""
+Created on Tue Nov 14 18:12:39 2024
+@author: jiazhen@emotiv.com
+"""
+
 import logging
 import os
 from datetime import datetime

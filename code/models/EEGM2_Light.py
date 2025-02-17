@@ -32,9 +32,9 @@ class SelfSupervisedMambaModel(nn.Module):
         x = x + residual
         return x
 
-class BrainMamba2EncoderOnly(nn.Module):
+class EEGM2_Light(nn.Module):
     def __init__(self, in_channels, d_state, d_conv, expand, scale_factor=1):
-        super(BrainMamba2EncoderOnly, self).__init__()
+        super(EEGM2_Light, self).__init__()
         self.scale_factor = scale_factor
         base_channels = 64 // self.scale_factor
 

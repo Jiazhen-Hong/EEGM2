@@ -53,17 +53,13 @@ def plot_tensorboard_logs(event_files, tag_name, labels=None):
     """
     plt.figure(figsize=(10, 8))
 
-    # 颜色列表，可以自定义更多颜色
     colors = ['red', 'g', 'b', 'c', 'm', 'y', 'k', '#ff5733', '#33ff57', '#3357ff']
 
     for idx, event_file in enumerate(event_files):
         steps, values = load_tensorboard_log(event_file, tag_name)
         avg_value = calculate_average(values)  # Calculate average
         print(f"{labels[idx] if labels else f'Run {idx+1}'} (Avg: {avg_value:.4f})")
-
-        # 选择颜色
         color = colors[idx % len(colors)]
-
         label = labels[idx] if labels else f"Run {idx+1}"
         plt.plot(steps, values, label=label, linewidth=3, color=color, alpha=0.5)
 

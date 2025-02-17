@@ -82,7 +82,6 @@ class ClassificationTrainer:
                 out = self.fc(features)
                 return out
 
-        # 应用部分 fine-tuning
         ClassificationTrainer.set_fine_tuning(pretrained_model, num_layers_to_train, logger=logger)
 
         return Classifier(pretrained_model, in_features, num_classes)
@@ -122,10 +121,6 @@ class ClassificationTrainer:
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-                # Log loss to TensorBoard every 10 batches
-                # if batch_idx % 10 == 0:
-                #     self.writer.add_scalar('Loss/train-steps', loss.item(), epoch * len(train_loader) + batch_idx)
-
             # Compute epoch metrics
             epoch_duration = time.time() - epoch_start_time
             total_training_time += epoch_duration
@@ -139,7 +134,6 @@ class ClassificationTrainer:
             # Validation phase
             val_loss, val_accuracy = self.validate(val_loader)
             
-            # 清理 CUDA 缓存
             torch.cuda.empty_cache()
 
             # Early stopping check
@@ -168,8 +162,6 @@ class ClassificationTrainer:
         logger.info(f"Average Training Time per Epoch: {average_training_time:.2f} seconds")
         self.writer.add_text('Training Summary', f'Average Training Time per Epoch: {average_training_time:.2f} seconds')
         self.writer.close()
-
-        # 加载保存的最佳模型
         self.model.load_state_dict(torch.load(checkpoint_path))
         logger.info(f"Loaded the best model from {checkpoint_path} with validation loss {early_stopping.best_loss:.4f}")
         return self.model
@@ -328,8 +320,8 @@ class ClassificationTrainer:
                 outputs = self.model(inputs)
                 
                 # Predictions and probabilities
-                _, predicted = torch.max(outputs, 1)  # 多分类取最大值对应类别
-                probs = F.softmax(outputs, dim=1)  # 获取所有类别的概率分布
+                _, predicted = torch.max(outputs, 1) 
+                probs = F.softmax(outputs, dim=1) 
                 
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
@@ -339,29 +331,29 @@ class ClassificationTrainer:
                 all_predictions.append(predicted.cpu())
                 all_probs.append(probs.cpu())
 
-        # **计算 Accuracy**
+        # accuracy
         accuracy = 100 * correct / total
 
-        # **将数据转换为 NumPy 格式**
+        # numpy
         all_labels = torch.cat(all_labels).numpy()
         all_predictions = torch.cat(all_predictions).numpy()
         all_probs = torch.cat(all_probs).numpy()
 
-        # **计算 Balanced Accuracy**
+        # Balanced Accuracy
         balanced_acc = balanced_accuracy_score(all_labels, all_predictions)
 
-        # **计算 Weighted F1 Score**
+        # Weighted F1 Score
         weighted_f1 = f1_score(all_labels, all_predictions, average='weighted')
 
-        # **计算 Cohen's Kappa**
+        # Cohen's Kappa
         cohen_kappa = cohen_kappa_score(all_labels, all_predictions)
 
-        # **计算 AUROC（适用于多分类）**
+        # AUROC（适用于多分类）
         unique_classes = len(set(all_labels.tolist()))
-        if unique_classes == 2:  # **二分类**
-            auroc = roc_auc_score(all_labels, all_probs[:, 1])  # 仅取正类别的概率
+        if unique_classes == 2:  
+            auroc = roc_auc_score(all_labels, all_probs[:, 1])  
             logger.info(f"Binary AUROC on the test set: {auroc:.4f}")
-        elif unique_classes > 2:  # **多分类**
+        elif unique_classes > 2:  
             auroc = roc_auc_score(all_labels, all_probs, multi_class='ovr')  # One-vs-Rest
             logger.info(f"Multi-class AUROC on the test set: {auroc:.4f}")
         else:
@@ -393,7 +385,6 @@ class EarlyStopping:
         self.early_stop = False
 
     def __call__(self, val_loss, model):
-        # 检查是否有改善
         if val_loss < self.best_loss - self.delta:
             self.best_loss = val_loss
             self.counter = 0
@@ -404,6 +395,5 @@ class EarlyStopping:
                 self.early_stop = True
 
     def save_checkpoint(self, model):
-        """保存当前最佳模型"""
         torch.save(model.state_dict(), self.save_path)
         print(f"Validation loss improved, model saved to {self.save_path}")

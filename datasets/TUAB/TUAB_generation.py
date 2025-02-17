@@ -1,6 +1,6 @@
 """
 Created on Tue Jan 14 18:12:39 2025
-
+Based on BIOT: https://github.com/ycq091044/BIOT/blob/main/datasets/TUAB/process.py
 @author: jiazhen@emotiv.com
 """
 
@@ -11,23 +11,6 @@ from multiprocessing import Pool
 import numpy as np
 import mne
 
-# we need these channels
-# (signals[signal_names['EEG FP1-REF']] - signals[signal_names['EEG F7-REF']],  # 0
-# (signals[signal_names['EEG F7-REF']] - signals[signal_names['EEG T3-REF']]),  # 1
-# (signals[signal_names['EEG T3-REF']] - signals[signal_names['EEG T5-REF']]),  # 2
-# (signals[signal_names['EEG T5-REF']] - signals[signal_names['EEG O1-REF']]),  # 3
-# (signals[signal_names['EEG FP2-REF']] - signals[signal_names['EEG F8-REF']]),  # 4
-# (signals[signal_names['EEG F8-REF']] - signals[signal_names['EEG T4-REF']]),  # 5
-# (signals[signal_names['EEG T4-REF']] - signals[signal_names['EEG T6-REF']]),  # 6
-# (signals[signal_names['EEG T6-REF']] - signals[signal_names['EEG O2-REF']]),  # 7
-# (signals[signal_names['EEG FP1-REF']] - signals[signal_names['EEG F3-REF']]),  # 14
-# (signals[signal_names['EEG F3-REF']] - signals[signal_names['EEG C3-REF']]),  # 15
-# (signals[signal_names['EEG C3-REF']] - signals[signal_names['EEG P3-REF']]),  # 16
-# (signals[signal_names['EEG P3-REF']] - signals[signal_names['EEG O1-REF']]),  # 17
-# (signals[signal_names['EEG FP2-REF']] - signals[signal_names['EEG F4-REF']]),  # 18
-# (signals[signal_names['EEG F4-REF']] - signals[signal_names['EEG C4-REF']]),  # 19
-# (signals[signal_names['EEG C4-REF']] - signals[signal_names['EEG P4-REF']]),  # 20
-# (signals[signal_names['EEG P4-REF']] - signals[signal_names['EEG O2-REF']]))) # 21
 standard_channels = [
     "EEG FP1-REF",
     "EEG F7-REF",
@@ -133,22 +116,7 @@ def split_and_dump(params):
                 with open("tuab-process-error-files.txt", "a") as f:
                     f.write(file + "\n")
                 continue
-            # for i in range(channeled_data.shape[1] // 2000):
-            #     dump_path = os.path.join(
-            #         dump_folder, file.split(".")[0] + "_" + str(i) + ".pkl"
-            #     )
-            #     pickle.dump(
-            #         {"X": channeled_data[:, i * 2000 : (i + 1) * 2000], "y": label},
-            #         open(dump_path, "wb"),
-            #     )
-            # for i in range(channeled_data.shape[1] // 1280):
-            #     dump_path = os.path.join(
-            #         dump_folder, file.split(".")[0] + "_" + str(i) + ".pkl"
-            #     )
-            #     pickle.dump(
-            #         {"X": channeled_data[:, i * 1280 : (i + 1) * 1280], "y": label},
-            #         open(dump_path, "wb"),
-            #     )
+
             for i in range(channeled_data.shape[1] // 12800):
                 dump_path = os.path.join(
                     dump_folder, file.split(".")[0] + "_" + str(i) + ".pkl"

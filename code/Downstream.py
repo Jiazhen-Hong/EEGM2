@@ -1,14 +1,14 @@
 from Downstream_Classifier import *
 #from Trainer import *
-from models import BrainMamba1, BrainMamba2, BrainMamba1_multibranch, BrainMamba2_multibranch
+from models import EEGM2, EEGM2_S1, EEGM2_S3, EEGM2_S4, EEGM2_S5
 import torch.optim as optim
 from datetime import datetime
 import json
-from utility import chebyBandpassFilter, setup_logging, create_data_loaders, TUABLoader, TUEVLoader, FocalLoss
-from utility.custerm_logistic_regression import fit_lr, make_representation
-from utility.logistic_regression_pca import extract_pooled_representation, count_parameters_up_to
+from utility import setup_logging, TUABLoader
+from utility.data_loader_filter import chebyBandpassFilter, create_data_loaders
+from utility.custerm_logistic_regression import fit_lr
+from utility.NL_representation import extract_pooled_representation, count_parameters_up_to
 from collections import Counter
-from utility.loss import BalancedCELoss, CBLoss
 from sklearn.metrics import accuracy_score
 
 import os
@@ -20,30 +20,11 @@ import numpy as np
 with open("config_downstream.json", "r") as f:
     config = json.load(f)
 
-data_name = 'TUAB' #Alpha, Attention, Crowdsource, STEW, DriverDistraction, : DREAMER, TUAB, TUEV
-model_name = "BrainMamba2_multibranch"
-#date = "20250114-10s"
-#date = "20250114-30s"
-#date = "20250110"
-#date = "20250110-L1Spectral"
-#date = "20250110-L2Spectral"
+data_name = 'TUAB' #Alpha, Attention, Crowdsource, STEW, DriverDistraction, : DREAMER, TUAB
+model_name = "EEGM2"
+date = "100s-L1Spectral"
+downstream_data_name = 'TUAB' #'STEW', 'Crowdsource', 'Attention', 'Alpha', 'DriverDistraction', 'DREAMER', 'TUAB', 
 
-#date = "60s-L2Spectral"
-
-
-#date = "L1Spectral"
-#date = "10s-L1Spectral"
-
-#date = "100s-L1Spectral"
-#date = "100s-L1Spectral"
-#date = "30s-L1Spectral"
-
-date = "2s-L1Spectral"
-
-#date = "100s-L1"
-#date = "5s-L1Spectral"
-
-downstream_data_name = 'TUAB' #'STEW', 'Crowdsource', 'Attention', 'Alpha', 'DriverDistraction', 'DREAMER', 'TUAB', 'TUEV'
 
 model_on_single_GPU = True
 if "cuda:0" in config["GPU_device"]:
@@ -63,32 +44,11 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
-# 如需完全确定性，可加这两行
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-'''
-For BrainMamba1, Total number of layers in the model: 64
-    - InputEmbedding_End = 2
-    - Encoder_End = 19,    => fine_tune = 45
-    - Bottleneck_End = 34, => fine_tune = 30
-    - Decoder_End = 47,    => fine_tune = 17       
-    - Decoder_End = 62,    => fine_tune = 2
-    - OutputEmbedding_End = 64
-'''
-'''
-For BrainMamba2_parallel, Total number of layers in the model: 100
-    - InputEmbedding_End = 2
-    - Encoder_End = 28,    => fine_tune = 72
-    - Bottleneck_End = 52, => fine_tune = 48
-    - Decoder3_Mamba_End = 70,    => fine_tune = 30  
-    - Decoder3_End = 74,    => fine_tune = 26
-    - Decoder2_End = 96,    => fine_tune = 4
-    - Decoder_End = 98,    => fine_tune = 2
-    - OutputEmbedding_End = 100
-'''
-target_layer = config["target_layer"] #hook_fn 会捕获 bottleneck 层完成前向传播后计算出的输出张量。
+target_layer = config["target_layer"]
 #bottleneck, pool4, encoder4
 
 
@@ -165,84 +125,6 @@ if downstream_data_name == 'TUAB':
         break  
 
     logger.info("Loaded TUAB dataset.")
-
-elif downstream_data_name == 'TUEV':
-    if date == "10s-L1Spectral":
-        tuev_root = "/data/datasets_public/TUEV/edf/processed_128hz_1280seqlen_JH/"
-    elif date == "5s-L1Spectral" or data_name == "5s-L1":
-        tuev_root = "/data/datasets_public/TUEV/edf/processed_128hz_640seqlen_JH/"
-    else:
-        tuev_root = "/data/datasets_public/TUEV/edf/processed_128hz_2560seqlen_JH/"
-    train_files = os.listdir(os.path.join(tuev_root, "train"))
-    val_files = os.listdir(os.path.join(tuev_root, "val"))
-    test_files = os.listdir(os.path.join(tuev_root, "test"))
-    # Create dataset objects
-    train_data = TUEVLoader(
-        os.path.join(tuev_root, "train"),
-        train_files
-    )
-    val_data = TUEVLoader(
-        os.path.join(tuev_root, "val"),
-        val_files
-    )
-    test_data = TUEVLoader(
-        os.path.join(tuev_root, "test"),
-        test_files
-    )
-    # Create data loaders
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=config["batch_size"], shuffle=True, num_workers=32, persistent_workers=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
-
-    # label obeservation 
-    label_counts = Counter()
-    for _, labels in train_loader:
-        print(f"Labels min: {labels.min()}, max: {labels.max()}")
-        break  
-    for _, labels in train_loader:
-        labels = labels.numpy().flatten()  # 转换为 NumPy 数组并展平
-        label_counts.update(labels)
-    total_samples = sum(label_counts.values())
-    label_ratios = {label: count / total_samples for label, count in label_counts.items()}
-    logger.info("===== TUEV Train Set Class Distribution ===== ")
-    for label, count in label_counts.items():
-        logger.info(f"Class {label}: {count} samples ({label_ratios[label]*100:.2f}%)")
-
-    # 统计 val_loader 中类别比例
-    val_label_counts = Counter()
-    for _, labels in val_loader:
-        labels = labels.numpy().flatten()
-        val_label_counts.update(labels)
-    # 统计 test_loader 中类别比例
-    test_label_counts = Counter()
-    for _, labels in test_loader:
-        labels = labels.numpy().flatten()
-        test_label_counts.update(labels)
-    # 打印统计信息
-    logger.info("===== TUEV Validation Set Class Distribution =====")
-    for label, count in val_label_counts.items():
-        logger.info(f"Class {label}: {count} samples ({count / sum(val_label_counts.values()) * 100:.2f}%)")
-
-
-    total_test_samples = sum(test_label_counts.values())
-    class_counts = torch.tensor([count for _, count in sorted(test_label_counts.items())], dtype=torch.float32)
-    #class_weights = total_test_samples / (len(class_counts) * class_counts)  # 归一化
-    class_weights = torch.log1p(total_test_samples / (len(class_counts) * class_counts))
-    class_weights = class_weights / class_weights.sum()  # 进一步归一化
-    class_weights = class_weights.to("cuda")  # 如果使用 GPU，则将权重移动到 CUDA
-    print(class_weights)
-    # 记录类别分布和权重信息
-    logger.info("===== TUEV Test Set Class Distribution =====")
-    for label, count in sorted(test_label_counts.items()):
-        percentage = count / total_test_samples * 100
-        weight = class_weights[label].item()
-        logger.info(f"Class {label}: {count} samples ({percentage:.2f}%), Weight: {weight:.4f}")
-        
-
-
-
-
-    logger.info("Loaded TUEV dataset.")
 else:
     data_x_dir = np.load(f'/data/data_downstream_task/{downstream_data_name}/{downstream_data_name}.npy', allow_pickle=True).item()
     logger.info(f"\n Successful Load the Dataset: {downstream_data_name} \n")
@@ -275,10 +157,6 @@ else:
         test_label=test_label,
         batch_size=config["batch_size"]
     )
-# else:
-#     raise ValueError("Dataset does not exist")
-
-# Print information about datasets and batches
 for name, loader in [("Training", train_loader), ("Validation", val_loader), ("Testing", test_loader)]:
     num_batches, total_trails = len(loader), len(loader.dataset)
     logger.info(f"{name} set: Number of batches: {num_batches}")
@@ -293,14 +171,16 @@ logger.info(f"    # Duration (s): {in_times}\n    # of channels: {in_channels}")
 #      Training: Classification Task
 #######################################
 
-if model_name == "BrainMamba1":
-    model = BrainMamba1(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba2":
-    model = BrainMamba2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba1_multibranch":
-    model = BrainMamba1_multibranch(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba2_multibranch":
-    model = BrainMamba2_multibranch(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+if model_name == "EEGM2":
+    model = EEGM2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S1":
+    model = EEGM2_S1(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S3":
+    model = EEGM2_S3(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S4":
+    model = EEGM2_S4(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S5":
+    model = EEGM2_S5(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
 else:
     raise ValueError("model name does not exist.")
 
@@ -308,61 +188,46 @@ else:
 if config["downstream_task_type"] == 1:
     # Fine-tuned Classifier
     logger.info(f"Using pretrained model for fine-tuning, Unfroze last [{config['num_layers_to_train']}] layers.")
-    #model = Mentality_Mamba2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"])
     if not model_on_single_GPU:
-        # 将模型迁移到主设备 cuda:0
         model = model.to(device)
-        model = torch.nn.DataParallel(model)  # DataParallel 默认主设备是 cuda:0
+        model = torch.nn.DataParallel(model)  
     else:
-        model = model.to(device)  # 单 GPU 时
-    # 加载预训练权重
+        model = model.to(device)  
     checkpoint = torch.load(f"{result_path}/models/best_model.pth", map_location=device)
     model.load_state_dict(checkpoint)  
     if config["num_layers_to_train"] == 0:
-        model.eval() # fix all param including dropout and norm.
-
+        model.eval() 
 
 
 elif config["downstream_task_type"] == 2:
     # Classifier from Scratch
     logger.info("Using model from scratch for classification.")
     model = model.to(device)
-    #model = Mentality_Mamba2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
 
 elif config["downstream_task_type"] == 3:
     # Linear Probing
     logger.info("Using pretrained model for linear probing.")
     model = model.to(device)
-    #model = Mentality_Mamba2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
     if not model_on_single_GPU:
-        # 将模型迁移到主设备 cuda:0
         model = model.to(device)
-        model = torch.nn.DataParallel(model)  # DataParallel 默认主设备是 cuda:0
+        model = torch.nn.DataParallel(model)  
     else:
-        model = model.to(device)  # 单 GPU 时
-    # 加载预训练权重
+        model = model.to(device)  
     checkpoint = torch.load(f"{result_path}/models/best_model.pth", map_location=device)
     model.load_state_dict(checkpoint)
     model.eval()
 
     params_count = count_parameters_up_to(model, target_layer)
     logger.info(f"Trainable parameters up to {target_layer}: {params_count}")
-    # Print all module names for reference
     logger.info("Model structure and module names:")
     for name, module in model.named_modules():
         logger.info(f"Module name: {name}, Module type: {type(module)}")
     logger.info("Model structure printed successfully.")
    
 
-
-
     # ---------------------------
-    #  Step 1: 提取特征
+    #  Step 1: make representation
     # ---------------------------
-    #if data_name == 'TUAB' or 'TUEV':
-    #logger.info("Detected TUAB dataset -> Using new dimension reduction method for linear probing.")
-    # 假设你的新函数叫 extract_pooled_representation
-    # 这里的 target_layer 是与 make_representation 相同的命名
     train_features, train_labels = extract_pooled_representation(
         model=model,
         loader=train_loader,
@@ -388,21 +253,6 @@ elif config["downstream_task_type"] == 3:
     logger.info(f"Train feature representation done. Feature shape: {val_features.shape}, Labels shape: {val_labels.shape}")
     
 
-    #else:
-        # train_features, train_labels = make_representation(model, train_loader, device, target_layer)
-        # train_features = train_features.view(train_features.size(0), -1)  # Flatten features to 2D
-        # logger.info(f"Train feature representation done. Feature shape: {train_features.shape}, Labels shape: {train_labels.shape}")
-
-        # test_features, test_labels = make_representation(model, test_loader, device, target_layer)
-        # test_features = test_features.view(test_features.size(0), -1)  # Flatten features to 2D
-        # logger.info(f"Test feature representation done. Feature shape: {test_features.shape}, Labels shape: {test_labels.shape}")
-
-
-        # val_features, val_labels = make_representation(model, val_loader, device, target_layer)
-        # val_features = val_features.view(val_features.size(0), -1)  # Flatten features to 2D
-        # logger.info(f"Test feature representation done. Feature shape: {val_features.shape}, Labels shape: {val_labels.shape}")
-        
-
     train_features = train_features.cpu().numpy()
     train_labels   = train_labels.cpu().numpy()
     test_features  = test_features.cpu().numpy()
@@ -423,24 +273,24 @@ elif config["downstream_task_type"] == 3:
         accuracy = accuracy_score(test_labels, test_predictions)
         logger.info(f"Linear Probing Accuracy: {accuracy:.4f}")
 
-        # 计算 Balanced Accuracy
+        # Balanced Accuracy
         balanced_acc = balanced_accuracy_score(test_labels, test_predictions)
         logger.info(f"Linear Probing Balanced Accuracy: {balanced_acc:.4f}")
 
-        # 计算 Weighted F1 Score
+        # Weighted F1 Score
         weighted_f1 = f1_score(test_labels, test_predictions, average='weighted')
         logger.info(f"Linear Probing Weighted F1 Score: {weighted_f1:.4f}")
 
-        # 计算 Cohen's Kappa
+        # Cohen's Kappa
         cohen_kappa = cohen_kappa_score(test_labels, test_predictions)
         logger.info(f"Linear Probing Cohen's Kappa: {cohen_kappa:.4f}")
 
-        # 计算 AUROC（支持多分类）
+        # AUROC
         unique_classes = len(set(test_labels.tolist()))
-        if unique_classes == 2:  # **二分类**
+        if unique_classes == 2:  # **binary**
             auroc = roc_auc_score(test_labels, test_probabilities[:, 1])
             logger.info(f"Linear Probing Binary AUROC: {auroc:.4f}")
-        elif unique_classes > 2:  # **多分类**
+        elif unique_classes > 2:  # **multi**
             auroc = roc_auc_score(test_labels, test_probabilities, multi_class='ovr')
             logger.info(f"Linear Probing Multi-class AUROC: {auroc:.4f}")
         else:
@@ -459,7 +309,7 @@ elif config["downstream_task_type"] == 3:
             device=device,
             log_path=log_path,
             logger=logger,
-            num_classes=config["num_classes"],   # 若你有多分类任务
+            num_classes=config["num_classes"],   
             num_epochs_lp=config['num_epochs'],
             batch_size_lp=config['batch_size'],
             lr_lp=config['learning_rate']
@@ -474,20 +324,13 @@ else:
 
 
 
-#criterion = nn.CrossEntropyLoss()
-#criterion = nn.CrossEntropyLoss(weight=class_weights)
-#criterion = nn.BCEWithLogitsLoss()
-#criterion = FocalLoss(gamma=2.0)
-criterion = BalancedCELoss(beta=0.999)
-#criterion = CBLoss(beta=0.999, num_classes=6)
-
+criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=config["learning_rate"]) #, SGD, optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999))
 classifier_trainer = ClassificationTrainer(model, int(in_channels*in_times), config["num_classes"], criterion, optimizer, num_epochs=config["num_epochs"], num_layers_to_train=config["num_layers_to_train"], log_dir=log_path, logger=logger)
 # Train the classifier
 logger.info("Training start.")
 best_model = classifier_trainer.train(train_loader, val_loader, patience=config["early_stop"], checkpoint_path=f"{log_path}checkpoint.pth", logger=logger)
 logger.info("Training end.")
-
 # Evaluate the classifier
 
 accuracy = classifier_trainer.evaluate(test_loader, logger=logger)

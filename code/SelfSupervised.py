@@ -5,25 +5,23 @@ Created on Mon Nov 15 10:12:39 2024
 """
 
 import numpy as np
-import os
+import os, json
 import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
-import json
 from SelfSupervised_Trainer import *
-from models import BrainMamba1, BrainMamba2, BrainMamba1_multibranch, BrainMamba2_multibranch, BrainUnet_multibranch, UNet
+from models import EEGM2, EEGM2_S1, EEGM2_S3, EEGM2_S4, EEGM2_S5, UNet
 
-from utility import chebyBandpassFilter, setup_logging, create_data_loaders, TUABLoader, TUEVLoader, MSEWithSpectralLoss, L1WithSpectralLoss
+from utility import chebyBandpassFilter, setup_logging, create_data_loaders, TUABLoader, MSEWithSpectralLoss, L1WithSpectralLoss
 
 
 # -------------------------------
 # Configuration and Logging Setup
 # -------------------------------
-data_name = 'Alpha' #Alpha, Attention, Crowdsource, STEW, DriverDistraction, DREAMER, TUAB, TUEV
-TU_sequen = 12800  # 256, 1280, 3840, 7680, 12800
-# 640, 1280, 2560
-model_name = "BrainMamba2_multibranch"  
+data_name = 'TUAB' #Alpha, Attention, Crowdsource, STEW, DriverDistraction, DREAMER, TUAB
+model_name = "EEGM2"  
 
+TU_sequen = 12800  # 256, 1280, 3840, 7680, 12800
 
 # Load json for hyper-parameter
 with open("config.json", "r") as f:
@@ -59,7 +57,6 @@ if data_name in ['Alpha', 'Attention', 'Crowdsource', 'STEW', 'DriverDistraction
     data_x_dir['train_data'], data_x_dir['train_label'], data_x_dir['test_data'], data_x_dir['test_label'], \
     data_x_dir['val_data'], data_x_dir['val_label'], data_x_dir['All_train_data'], data_x_dir['All_train_label']
 
-    #logger.info(f"Successful loading data {data_name}: ")
     total_trials = All_train_data.shape[0] + test_data.shape[0]
     train_percentage = (train_data.shape[0] / total_trials) * 100
     val_percentage = (val_data.shape[0] / total_trials) * 100
@@ -103,29 +100,6 @@ elif data_name in ['TUAB']:
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
     logger.info("Loaded TUAB dataset.")
-elif data_name in ['TUEV']:
-    tuev_root = f"/data/datasets_public/TUEV/edf/processed_128hz_{TU_sequen}seqlen_JH/"
-    train_files = os.listdir(os.path.join(tuev_root, "train"))
-    val_files = os.listdir(os.path.join(tuev_root, "val"))
-    test_files = os.listdir(os.path.join(tuev_root, "test"))
-    # Create dataset objects
-    train_data = TUEVLoader(
-        os.path.join(tuev_root, "train"),
-        train_files
-    )
-    val_data = TUEVLoader(
-        os.path.join(tuev_root, "val"),
-        val_files
-    )
-    test_data = TUEVLoader(
-        os.path.join(tuev_root, "test"),
-        test_files
-    )
-    # Create data loaders
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=config["batch_size"], shuffle=True, num_workers=32, persistent_workers=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=config["batch_size"], shuffle=False, num_workers=32, persistent_workers=True)
-    logger.info("Loaded TUAB dataset.")
 else:
     raise ValueError(f"Unknown data_name: {data_name}")
 # Print information about datasets and batches
@@ -142,25 +116,22 @@ logger.info(f"    # Duration (s): {in_times}   # of channels: {in_channels}\n")
 #      Training: Reconstruction Task
 #######################################
 
-if model_name == "BrainMamba1":
-    model = BrainMamba1(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba2":
-    model = BrainMamba2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba1_multibranch":
-    model = BrainMamba1_multibranch(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainMamba2_multibranch":
-    model = BrainMamba2_multibranch(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
-elif model_name == "BrainUnet_multibranch":
-    model = BrainUnet_multibranch(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+if model_name == "EEGM2":
+    model = EEGM2(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S1":
+    model = EEGM2_S1(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S3":
+    model = EEGM2_S3(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S4":
+    model = EEGM2_S4(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
+elif model_name == "EEGM2_S5":
+    model = EEGM2_S5(in_channels, in_channels, d_state=config["d_state"], d_conv=config["d_conv"], expand=config["expand"]).to(device)
 elif model_name == "UNet":
     model = UNet(in_channels, in_channels).to(device)
 
 else:
     raise ValueError("model name does not exist.")
 
-#if torch.cuda.device_count() > 1:
-#    logger.info(f"Using {torch.cuda.device_count()} GPUs with DataParallel.")
-#    model = nn.DataParallel(model) 
 if config['loss'] == "L1Loss":  
     criterion = nn.L1Loss() #MSELoss(),SmoothL1Loss()
 elif config['loss'] == "L1WithSpectralLoss":
@@ -170,7 +141,6 @@ elif config['loss'] == "MSEWithSpectralLoss":
 else:
     raise ValueError("loss name does not exist.")
 
-#optimizer = optim.AdamW(model.parameters(), lr=config["learning_rate"]) #, SGD, optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999))
 optimizer = optim.AdamW(model.parameters(), lr=5e-5, weight_decay=1e-2)
 trainer = Trainer(model, criterion, optimizer, num_epochs=config["num_epochs"], log_dir=result_path)
 # model information:

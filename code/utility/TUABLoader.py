@@ -1,5 +1,9 @@
-import pickle  # 用于加载 .pkl 文件
-from torch.utils.data import Dataset, DataLoader  # 用于自定义数据集和数据加载
+"""
+Created on Tue Nov 14 18:12:39 2024
+@author: jiazhen@emotiv.com
+"""
+import pickle  
+from torch.utils.data import Dataset, DataLoader  
 import torch
 import os 
 import numpy as np

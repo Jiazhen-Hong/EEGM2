@@ -1,5 +1,4 @@
 """
-Example of BrainMamba1_parallel with multi-scale input embedding (kernel_sizes=1,3,7).
 Created on Mon Dec 21 04:12:39 2024
 
 @author: jiazhen@emotiv.com
@@ -7,31 +6,18 @@ Created on Mon Dec 21 04:12:39 2024
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mamba_ssm import Mamba2  # ensure you have mamba_ssm installed
+from mamba_ssm import Mamba2  # JH download 11/14/2024, https://github.com/state-spaces/mamba (Complie with Numpy 1.x only, also required)
 
-# ------------------------------------------------------------------------------
-# 1) 多分支输入嵌入：并行卷积核大小分别为 1, 3, 7
-# ------------------------------------------------------------------------------
+
 class MultiBranchInputEmbedding(nn.Module):
-    """
-    同时用 kernel_size = 1, 3, 7 的三支卷积；
-    最后拼接通道后，用一个 1x1 卷积做融合，得到与 out_channels 相同的通道数。
-    """
     def __init__(self, in_channels, out_channels):
         super(MultiBranchInputEmbedding, self).__init__()
-        # 三个并行分支
         self.branch1 = nn.Conv1d(in_channels, out_channels, kernel_size=1, padding=0)
         self.branch3 = nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
         self.branch7 = nn.Conv1d(in_channels, out_channels, kernel_size=7, padding=3)
-
-        # 用 1x1 卷积把 3*out_channels -> out_channels
         self.fuse = nn.Conv1d(3 * out_channels, out_channels, kernel_size=1, padding=0)
 
     def forward(self, x):
-        """
-        x 形状: [batch, in_channels, time]
-        输出形状: [batch, out_channels, time]
-        """
         b1 = self.branch1(x)  # => [B, out_channels, T]
         b3 = self.branch3(x)  # => [B, out_channels, T]
         b7 = self.branch7(x)  # => [B, out_channels, T]
@@ -41,10 +27,6 @@ class MultiBranchInputEmbedding(nn.Module):
         return out
     
 
-
-# ------------------------------------------------------------------------------
-# 2) Mamba2 模型，与之前相同
-# ------------------------------------------------------------------------------
 class SelfSupervisedMambaModel(nn.Module):
     def __init__(self, d_model, d_state, d_conv, expand):
         super(SelfSupervisedMambaModel, self).__init__()
@@ -58,24 +40,13 @@ class SelfSupervisedMambaModel(nn.Module):
         x = x + residual        
         return x
 
-# ------------------------------------------------------------------------------
-# 3) 主体网络：BrainMamba1_parallel，替换 input_embedding 为多分支结构
-# ------------------------------------------------------------------------------
-class BrainMamba2_multibranch(nn.Module):
-    """
-    一个简化版的 3-layer Encoder + 3-layer Decoder 结构示例。
-    在 input_embedding 使用多分支卷积 (1, 3, 7) 融合。
-    """
+class EEGM2(nn.Module):
     def __init__(self, in_channels, out_channels, d_state, d_conv, expand, scale_factor=1, logger=None):
-        super(BrainMamba2_multibranch, self).__init__()
+        super(EEGM2, self).__init__()
         self.scale_factor = scale_factor
         base_channels = 64 // self.scale_factor
-
-        # ---- (A) 改动：使用 MultiBranchInputEmbedding 而非单一 Conv1d ----
         self.input_embedding = MultiBranchInputEmbedding(in_channels, base_channels)
-        # 备注：若你想要还在这里再加激活或BN，也可用 nn.Sequential(...) 包一下
 
-        # ---- (B) 3 层 Encoder ----
         # Encoder1
         self.encoder1 = nn.Sequential(
             nn.Linear(base_channels, base_channels),
@@ -91,14 +62,13 @@ class BrainMamba2_multibranch(nn.Module):
         self.encoder3 = nn.Conv1d(128 // self.scale_factor, 256 // self.scale_factor, kernel_size=3, padding=1)
         self.pool3 = nn.MaxPool1d(kernel_size=2, stride=2)
 
-        # ---- (C) Bottleneck ----
+        #bottle
         self.bottleneck = nn.Sequential(
             nn.Linear(256 // self.scale_factor, 256 // self.scale_factor),
             SelfSupervisedMambaModel(d_model=256 // self.scale_factor, d_state=d_state, d_conv=d_conv, expand=expand),
             nn.Linear(256 // self.scale_factor, 256 // self.scale_factor),
         )
 
-        # ---- (D) 3 层 Decoder ----
         # Decoder3
         self.decoder3 = nn.Conv1d(
             (256 // self.scale_factor) + (256 // self.scale_factor), 
@@ -135,18 +105,17 @@ class BrainMamba2_multibranch(nn.Module):
             padding=1
         )
 
-        # ---- (E) 输出 embedding ----
+        # ---- output embedding ----
         self.onput_embedding = nn.Conv1d(64 // self.scale_factor, out_channels, kernel_size=1)
 
         self.logger = logger  
         self.logged_input_shapes = False
 
     def forward(self, x):
-        # 记录输入形状
         if self.logger and not self.logged_input_shapes:
             self.logger.info(f"Input data shape before multi-branch embedding: {x.shape}")
 
-        # (A) Multi-branch input embedding: => (B, base_channels, T)
+        # Multi-branch input embedding: => (B, base_channels, T)
         x = self.input_embedding(x)   
         if self.logger and not self.logged_input_shapes:
             self.logger.info(f"Input embedding shape after multi-branch: {x.shape}")
@@ -171,7 +140,7 @@ class BrainMamba2_multibranch(nn.Module):
         bottleneck = self.bottleneck(x3p)  # => (B, T/8, 256)
         bottleneck = bottleneck.permute(0, 2, 1)  # => (B, 256, T/8)
 
-        # 上采样到 x3 的时间维度 (T/4)
+        # upsampling x3 to (T/4)
         bottleneck = F.interpolate(bottleneck, size=x3.size(2), mode='linear', align_corners=False)
 
         # ---- Decoder 3 ----
@@ -181,7 +150,7 @@ class BrainMamba2_multibranch(nn.Module):
         d3 = self.decodeMamba3(d3)                # => (B, T/4, 256)
         d3 = d3.permute(0, 2, 1)                  # => (B, 256, T/4)
 
-        # 上采样到 x2 的时间维度 (T/2)
+        # upsampling x2 to (T/2)
         d3 = F.interpolate(d3, size=x2.size(2), mode='linear', align_corners=False)
 
         # ---- Decoder 2 ----
@@ -191,7 +160,7 @@ class BrainMamba2_multibranch(nn.Module):
         d2 = self.decodeMamba2(d2)                # => (B, T/2, 128)
         d2 = d2.permute(0, 2, 1)                  # => (B, 128, T/2)
 
-        # 上采样到 x1 的时间维度 (T)
+        # upsampling x1 to (T)
         d2 = F.interpolate(d2, size=x1.size(2), mode='linear', align_corners=False)
 
         # ---- Decoder 1 ----

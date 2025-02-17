@@ -1,11 +1,11 @@
-from .BrainMamba1 import * 
-from .BrainMamba2 import * 
+from .EEGM2 import * 
+from .EEGM2_Light import * 
+from .EEGM2_S1 import * 
+from .EEGM2_S3 import * 
+from .EEGM2_S4 import * 
+from .EEGM2_S5 import * 
 from .UNet import *
-from .BrainMamba1_multibranch import *
-from .BrainMamba2_multibranch import *
-from. BrainAttn_multibranch import *
-from .BrainUnet_multibranch import *
-from .BrainEncodeOnly_mltibranch import *
+
 
 
 

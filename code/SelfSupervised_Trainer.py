@@ -1,18 +1,20 @@
+"""
+Created on Mon Nov 15 10:12:39 2024
+
+@author: jiazhen@emotiv.com
+"""
 import torch
 print(torch.__version__)
 print(torch.version.cuda)
 import os
 import numpy as np
 import torch
-#import torch.nn as nn
-#from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import matplotlib.pyplot as plt
 from numpy.linalg import norm
-#from mamba_ssm import Mamba  #https://github.com/state-spaces/mamba
-import time  # 用于时间测量
-import torch.cuda  # 用于内存测量
+import time  
+import torch.cuda  
 from torch.optim.lr_scheduler import OneCycleLR
 class Trainer:
     '''
@@ -47,15 +49,6 @@ class Trainer:
         plt.close()
         print(f"Successfully saved to {plot_filename}")
     def train(self, train_loader, val_loader=None, patience=10, model_folder = None , checkpoint_path="checkpoint_epoch_{epoch}.pth", best_model_path="best_model.pth"):
-        """
-        Train the model with validation, checkpoint saving, and early stopping.
-        Args:
-            train_loader (DataLoader): Training dataset loader.
-            val_loader (DataLoader): Validation dataset loader. If None, validation is skipped.
-            patience (int): Number of epochs to wait for improvement before stopping training.
-            checkpoint_path (str): Path template to save checkpoint models at specific epochs.
-            best_model_path (str): Path to save the best model.
-        """
         # Initialize EarlyStopping
         if not os.path.exists(model_folder):
             os.makedirs(model_folder)
@@ -65,16 +58,16 @@ class Trainer:
             checkpoint_path = model_folder+checkpoint_path
         )
         # Initial OneCycle learning rate
-        steps_per_epoch = len(train_loader)  # 每个 epoch 的迭代次数
+        steps_per_epoch = len(train_loader)  
         scheduler = OneCycleLR(
             self.optimizer,
-            max_lr=5e-4,                     # 最大学习率
-            epochs=self.num_epochs,          # 总训练周期数
+            max_lr=5e-4,                     
+            epochs=self.num_epochs,          
             steps_per_epoch=steps_per_epoch,
-            pct_start=0.1,                   # 前10%时间升高学习率
-            anneal_strategy='cos',           # 使用余弦衰减策略
-            div_factor=2,                   # 初始学习率 = max_lr / 10
-            final_div_factor=100             # 最小学习率 = max_lr / 10000
+            pct_start=0.1,                   
+            anneal_strategy='cos',          
+            div_factor=2,                   
+            final_div_factor=100             
         )
         self.model.train()
         total_training_time = 0.0  # Accumulate training time
@@ -95,15 +88,8 @@ class Trainer:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 scheduler.step()  # update learning rate
-                # current_lr = scheduler.get_last_lr()[0]
-                # self.writer.add_scalar('LearningRate/train-steps', current_lr, epoch * len(train_loader) + batch_idx)
                 running_loss += loss.item()
-                # Log loss to TensorBoard every 10 batches
-                # if batch_idx % 10000 == 0:
-                #     step_index = epoch * len(train_loader) + batch_idx #len(train_loader) ~= total trail/batch size.
-                #     self.writer.add_scalar('Loss/train-steps', loss.item(), step_index)
-                # Update the progress bar
-                if batch_idx % 100 == 0:  # 每100个batch更新进度条
+                if batch_idx % 100 == 0:  
                     self.print_progress_bar(batch_idx + 1, len(train_loader))
 
             # Compute epoch statistics
@@ -143,13 +129,6 @@ class Trainer:
         self.writer.add_text('Training Summary', f'Average Training Time per Epoch: {average_training_time:.2f} seconds')
         self.writer.close()
     def validate(self, val_loader):
-        """
-        Validate the model on the validation dataset.
-        Args:
-            val_loader (DataLoader): Validation dataset loader.
-        Returns:
-            float: Average validation loss.
-        """
         self.model.eval()
         running_loss = 0.0
         with torch.no_grad():
@@ -175,22 +154,18 @@ class Trainer:
         return test_original, test_reconstructed
         
     def plot_results(self, test_original, test_reconstructed, trail_index=0, save_path=None, log=None):
-        # 如果没有指定 save_path 则不保存
         if save_path and not os.path.exists(save_path):
             os.makedirs(save_path)
         
-        # 平均所有 trial (ERP)
         original_mean = np.mean(test_original, axis=0)  # shape: (time_points, channels)
         reconstructed_mean = np.mean(test_reconstructed, axis=0)  # shape: (time_points, channels)
-        # 计算均方误差 (MSE)
+        # MSE
         total_mse = 0
         for channel in range(original_mean.shape[0]):
             mse = np.mean((original_mean[channel, :] - reconstructed_mean[channel, :]) ** 2)
             total_mse += mse
-            #print(f'Channel {channel + 1} MSE: {mse}')
             log.info(f" - Channel {channel + 1} MSE: {mse}")
         average_mse = total_mse / original_mean.shape[1]
-        #print(f'Average MSE across all channels computed from Original and Reconstructed ERPs: {average_mse}')
         log.info(f' - Average MSE across all channels computed from Original and Reconstructed ERPs: {average_mse}')
         # Plot 1
         plt.figure(figsize=(14, 6))
@@ -232,8 +207,8 @@ class Trainer:
             self.save_plot('plot3', save_path)
         plt.show()
         # Plot 4
-        original_Potential = np.mean(test_original, axis=(1, 2))  # 对于 test_original
-        reconstructed_Potential = np.mean(test_reconstructed, axis=(1, 2))  # 对于 test_reconstructed
+        original_Potential = np.mean(test_original, axis=(1, 2)) 
+        reconstructed_Potential = np.mean(test_reconstructed, axis=(1, 2))  
         plt.figure(figsize=(14, 6))
         plt.plot(original_Potential, label='Original Channel', color='black', alpha=0.3)
         plt.plot(reconstructed_Potential, label='Reconstructed Channel', color='red', alpha=0.3)
@@ -247,12 +222,6 @@ class Trainer:
         plt.show()
 class EarlyStopping:
     def __init__(self, patience=10, save_path="best_model.pth", checkpoint_path="checkpoint_epoch_{epoch}.pth"):
-        """
-        Args:
-            patience (int): Number of epochs to wait for improvement before stopping training.
-            save_path (str): Path to save the best model.
-            checkpoint_path (str): Path template to save checkpoints for every epoch where loss improves.
-        """
         self.patience = patience
         self.save_path = save_path
         self.checkpoint_path = checkpoint_path
@@ -274,14 +243,14 @@ class EarlyStopping:
         return self.counter >= self.patience  # Stop training if patience is exceeded
     def save_checkpoint(self, model, epoch):
         """Save the current model as a checkpoint and manage checkpoint files."""
-        checkpoint_file = self.checkpoint_path.format(epoch=epoch + 1)  # Add 1 to epoch for human-readable numbering
+        checkpoint_file = self.checkpoint_path.format(epoch=epoch + 1) 
         torch.save(model.state_dict(), checkpoint_file)
         print(f"Checkpoint saved to {checkpoint_file}")
         # Add new checkpoint file to the list
         self.checkpoint_files.append(checkpoint_file)
         # Remove the oldest checkpoint if more than 5 are saved
         if len(self.checkpoint_files) > 5:
-            oldest_checkpoint = self.checkpoint_files.pop(0)  # Remove the oldest file path
+            oldest_checkpoint = self.checkpoint_files.pop(0)  
             if os.path.exists(oldest_checkpoint):
                 os.remove(oldest_checkpoint)  # Delete the file
                 print(f"Removed old checkpoint: {oldest_checkpoint}")
