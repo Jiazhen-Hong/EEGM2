@@ -27,7 +27,7 @@ This code has been tested with **Python 3.10.16**. For users who prefer using Co
 
 #### **Create an environment from a specific file:**  
 ```bash
-conda env create -f env-requirement/JHMamba2-env20250206.yml
+conda env create -f Env-requirement/JHMamba2-env20250206.yml
 ```
 
 #### Note:
