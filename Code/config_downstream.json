@@ -1,0 +1,17 @@
+{       
+    "downstream_task_type": 1,
+    "num_layers_to_train": 66,
+    "target_layer": "pool3",
+    "Linear_Prbing": false,
+    "GPU_device": "cuda:0",
+    "Seed": 0,
+    "filter": true,
+    "num_epochs": 30,
+    "early_stop": 30,
+    "num_classes": 2, 
+    "d_state": 16,
+    "d_conv": 2,
+    "expand": 8,
+    "batch_size": 64,
+    "learning_rate": 0.0001
+}

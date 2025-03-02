@@ -1,0 +1,113 @@
+2025-01-14 22:45:03,472 - INFO - Loaded hyperparameters: [{'GPU_device': 'cuda:0', 'filter': True, 'num_epochs': 500, 'early_stop': 500, 'num_classes': 2, 'd_state': 16, 'd_conv': 2, 'expand': 8, 'scale_factor': 1, 'batch_size': 64}]. 
+
+2025-01-14 22:45:03,472 - INFO - TUAB 
+
+2025-01-14 22:45:03,596 - INFO - GPU: cuda:0
+ model name: BrainMamba2_multibranch
+2025-01-14 22:45:03,660 - INFO - Loaded TUAB dataset.
+2025-01-14 22:45:03,660 - INFO - Training set: Number of batches: 1552
+2025-01-14 22:45:03,660 - INFO - Training set: Total number of trails: 99296
+
+2025-01-14 22:45:03,660 - INFO - Validation set: Number of batches: 378
+2025-01-14 22:45:03,660 - INFO - Validation set: Total number of trails: 24165
+
+2025-01-14 22:45:03,660 - INFO - Testing set: Number of batches: 192
+2025-01-14 22:45:03,660 - INFO - Testing set: Total number of trails: 12241
+
+2025-01-14 22:45:04,179 - INFO - Shape for each batch: torch.Size([64, 16, 3840])
+2025-01-14 22:45:04,179 - INFO -     # Duration (s): 3840   # of channels: 16
+
+2025-01-14 22:45:04,884 - INFO - Layer input_embedding.branch1.weight: Shape torch.Size([64, 16, 1])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.branch1.bias: Shape torch.Size([64])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.branch3.weight: Shape torch.Size([64, 16, 3])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.branch3.bias: Shape torch.Size([64])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.branch7.weight: Shape torch.Size([64, 16, 7])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.branch7.bias: Shape torch.Size([64])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.fuse.weight: Shape torch.Size([64, 192, 1])
+2025-01-14 22:45:04,885 - INFO - Layer input_embedding.fuse.bias: Shape torch.Size([64])
+2025-01-14 22:45:04,885 - INFO - Total trainable parameters: 4565144
+
+2025-01-14 22:45:04,885 - INFO - Model Summary: 
+ BrainMamba2_multibranch(
+  (input_embedding): MultiBranchInputEmbedding(
+    (branch1): Conv1d(16, 64, kernel_size=(1,), stride=(1,))
+    (branch3): Conv1d(16, 64, kernel_size=(3,), stride=(1,), padding=(1,))
+    (branch7): Conv1d(16, 64, kernel_size=(7,), stride=(1,), padding=(3,))
+    (fuse): Conv1d(192, 64, kernel_size=(1,), stride=(1,))
+  )
+  (encoder1): Sequential(
+    (0): Linear(in_features=64, out_features=64, bias=True)
+    (1): SelfSupervisedMambaModel(
+      (mamba): Mamba2(
+        (in_proj): Linear(in_features=64, out_features=1064, bias=False)
+        (conv1d): Conv1d(544, 544, kernel_size=(2,), stride=(1,), padding=(1,), groups=544)
+        (act): SiLU()
+        (norm): RMSNorm()
+        (out_proj): Linear(in_features=512, out_features=64, bias=False)
+      )
+      (norm): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+    )
+  )
+  (pool1): MaxPool1d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (encoder2): Conv1d(64, 128, kernel_size=(3,), stride=(1,), padding=(1,))
+  (pool2): MaxPool1d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (encoder3): Conv1d(128, 256, kernel_size=(3,), stride=(1,), padding=(1,))
+  (pool3): MaxPool1d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (bottleneck): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): SelfSupervisedMambaModel(
+      (mamba): Mamba2(
+        (in_proj): Linear(in_features=256, out_features=4160, bias=False)
+        (conv1d): Conv1d(2080, 2080, kernel_size=(2,), stride=(1,), padding=(1,), groups=2080)
+        (act): SiLU()
+        (norm): RMSNorm()
+        (out_proj): Linear(in_features=2048, out_features=256, bias=False)
+      )
+      (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+    (2): Linear(in_features=256, out_features=256, bias=True)
+  )
+  (decoder3): Conv1d(512, 256, kernel_size=(3,), stride=(1,), padding=(1,))
+  (decodeMamba3): SelfSupervisedMambaModel(
+    (mamba): Mamba2(
+      (in_proj): Linear(in_features=256, out_features=4160, bias=False)
+      (conv1d): Conv1d(2080, 2080, kernel_size=(2,), stride=(1,), padding=(1,), groups=2080)
+      (act): SiLU()
+      (norm): RMSNorm()
+      (out_proj): Linear(in_features=2048, out_features=256, bias=False)
+    )
+    (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+  )
+  (decoder2): Conv1d(384, 128, kernel_size=(3,), stride=(1,), padding=(1,))
+  (decodeMamba2): SelfSupervisedMambaModel(
+    (mamba): Mamba2(
+      (in_proj): Linear(in_features=128, out_features=2096, bias=False)
+      (conv1d): Conv1d(1056, 1056, kernel_size=(2,), stride=(1,), padding=(1,), groups=1056)
+      (act): SiLU()
+      (norm): RMSNorm()
+      (out_proj): Linear(in_features=1024, out_features=128, bias=False)
+    )
+    (norm): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+  )
+  (decoder1): Conv1d(192, 64, kernel_size=(3,), stride=(1,), padding=(1,))
+  (onput_embedding): Conv1d(64, 16, kernel_size=(1,), stride=(1,))
+)
+
+2025-01-14 22:45:04,885 - INFO - Training start.
+2025-01-16 22:02:16,492 - INFO -  - Channel 1 MSE: 1.664770987730435e-09
+2025-01-16 22:02:16,492 - INFO -  - Channel 2 MSE: 7.22210791170852e-10
+2025-01-16 22:02:16,492 - INFO -  - Channel 3 MSE: 2.496330642198785e-10
+2025-01-16 22:02:16,492 - INFO -  - Channel 4 MSE: 1.791200937573123e-10
+2025-01-16 22:02:16,492 - INFO -  - Channel 5 MSE: 2.534038257007154e-10
+2025-01-16 22:02:16,492 - INFO -  - Channel 6 MSE: 1.3845886659424878e-09
+2025-01-16 22:02:16,492 - INFO -  - Channel 7 MSE: 1.5868533154161923e-09
+2025-01-16 22:02:16,492 - INFO -  - Channel 8 MSE: 1.5697680932902358e-09
+2025-01-16 22:02:16,493 - INFO -  - Channel 9 MSE: 6.37926489410745e-10
+2025-01-16 22:02:16,493 - INFO -  - Channel 10 MSE: 7.342821489730866e-11
+2025-01-16 22:02:16,493 - INFO -  - Channel 11 MSE: 1.5137496811590267e-10
+2025-01-16 22:02:16,493 - INFO -  - Channel 12 MSE: 1.305480390456637e-09
+2025-01-16 22:02:16,493 - INFO -  - Channel 13 MSE: 4.846757439835869e-10
+2025-01-16 22:02:16,493 - INFO -  - Channel 14 MSE: 5.24255971967591e-10
+2025-01-16 22:02:16,493 - INFO -  - Channel 15 MSE: 2.1817281314895354e-09
+2025-01-16 22:02:16,493 - INFO -  - Channel 16 MSE: 1.9011732466100995e-10
+2025-01-16 22:02:16,493 - INFO -  - Average MSE across all channels computed from Original and Reconstructed ERPs: 3.426910435471465e-12

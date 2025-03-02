@@ -1,0 +1,12 @@
+{       
+    "GPU_device": "cuda:0",
+    "filter": true,
+    "num_epochs": 50,
+    "early_stop": 500,
+    "d_state": 16,
+    "d_conv": 2,
+    "expand": 8,
+    "scale_factor": 1,
+    "batch_size": 64, 
+    "loss": "L1WithSpectralLoss"
+}
