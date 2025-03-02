@@ -19,9 +19,6 @@ This work follows from the project with [**Emotiv Research**](https://www.emotiv
 3. A **multi-branch receptive field input embedding strategy** that improves cross-subject generalization and stability for EEG sequences of varying lengths.  
  
 
-## Note:
-1. Mamba block used in this project was downloaded by JH on **11/14/2024** from [Mamba GitHub](https://github.com/state-spaces/mamba), only numpy < 2.x is accepted.  
-2. Mamba-2 block used in this project was downloaded by JH on **12/14/2024** from [Mamba2 GitHub](https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba2.py).
 
 ## **Setup**  
 ### Instructions refer to Unix-based systems (e.g., Linux, macOS).  
@@ -32,6 +29,11 @@ This code has been tested with **Python 3.10.16**. For users who prefer using Co
 ```bash
 conda env create -f env-requirement/JHMamba2-env20250206.yml
 ```
+
+#### Note:
+1. Mamba block used in this project was downloaded by JH on **11/14/2024** from [Mamba GitHub](https://github.com/state-spaces/mamba), only numpy < 2.x is accepted.  
+2. Mamba-2 block used in this project was downloaded by JH on **12/14/2024** from [Mamba2 GitHub](https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba2.py).
+
 
 ## Repository Structure  
 ```plaintext
