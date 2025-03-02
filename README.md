@@ -11,26 +11,28 @@ This work follows from the project with [**Emotiv Research**](https://www.emotiv
 ![EEGM2 Overview](./Figures/Figure1-arxiv.png)
 
 ## Overview
-**EEGM2** shows superior performance on long-sequence tasks, where conventional models struggle.
+**EEGM2** EEGM2 is a self-supervised framework designed to leverage **Mamba-2 blocks** to accurately model sequences of various lengths in EEG signals while minimizing computational complexity for resource-limited environments.
 
-## Project Goal
-EEGM2, a self-supervised framework designed to leverage Mamba-2 blocks to accurately model sequences of various lengths in EEG signals while minimizing computational complexity for resource-limited environments. 
-
-## Key Features
-- **Multi-Branch Input Embedding**:  
-- **Spatiotemporal Loss**:  
-- **Mamba-2 Block**:  
+## Key Features  
+1. A **reconstruction-based framework** that captures both local and global EEG features through Mamba-2 structured state space models.  
+2. A **spatiotemporal-aware loss function** that enhances robustness to noise and preserves spectral information.  
+3. A **multi-branch receptive field input embedding strategy** that improves cross-subject generalization and stability for EEG sequences of varying lengths.  
+ 
 
 ## Note:
-
 1. Mamba block used in this project was downloaded by JH on **11/14/2024** from [Mamba GitHub](https://github.com/state-spaces/mamba), only numpy < 2.x is accepted.  
 2. Mamba-2 block used in this project was downloaded by JH on **12/14/2024** from [Mamba2 GitHub](https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba2.py).
 
+## Repository Structure  
 ```plaintext
 EEGMamba/
-├── code/                # Main directory for self-supervised learning and downstream tasks
-│   ├── env-requirement/ # Environment backups with dates
+├── Code/                # Main directory for self-supervised learning and downstream tasks
 │   ├── models/          # Includes EEGM2 and its variants
-│   └── utility/         # Related functions         
-├── data/                # Additional data-related code 
+│   └── utility/         # Related functions        
+├── Datasets/            # Source of raw EEG data and Pre-processing.py
+├── Figures/             # Diagrams and visual representations
+├── Pretrained_EEGM2/    # Pretrained models and checkpoints
+│   ├── DrivierDistraction/          # model trained on EMOTIV dataset
+│   └── TUAB/            # model trained on EMOTIV dataset with varying duration
+├── Env-requirement/     # Environment backups with dates
 └── README.md            # Project overview and documentation
