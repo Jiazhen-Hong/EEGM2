@@ -23,6 +23,16 @@ This work follows from the project with [**Emotiv Research**](https://www.emotiv
 1. Mamba block used in this project was downloaded by JH on **11/14/2024** from [Mamba GitHub](https://github.com/state-spaces/mamba), only numpy < 2.x is accepted.  
 2. Mamba-2 block used in this project was downloaded by JH on **12/14/2024** from [Mamba2 GitHub](https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba2.py).
 
+## **Setup**  
+### Instructions refer to Unix-based systems (e.g., Linux, macOS).  
+
+This code has been tested with **Python 3.10.16**. For users who prefer using Conda, environment YAML files are provided.
+
+#### **Create an environment from a specific file:**  
+```bash
+conda env create -f env-requirement/JHMamba2-env20250206.yml
+```
+
 ## Repository Structure  
 ```plaintext
 EEGMamba/
@@ -36,3 +46,5 @@ EEGMamba/
 │   └── TUAB/            # model trained on EMOTIV dataset with varying duration
 ├── Env-requirement/     # Environment backups with dates
 └── README.md            # Project overview and documentation
+```
+
