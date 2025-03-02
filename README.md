@@ -1,8 +1,8 @@
 # EEGM2: An Efficient Mamba-2-Based Self-Supervised Framework for Long-Sequence EEG Modeling
 
 **Authors:** 
-[Jiazhen Hong](www.linkedin.com/in/jiazhen-hong66)
-[Geoffrey Mackellar](https://www.linkedin.com/in/geoffmackellar/?originalSubdomain=au),  
+[Jiazhen Hong](www.linkedin.com/in/jiazhen-hong66),
+[Geoffrey Mackellar](https://www.linkedin.com/in/geoffmackellar/?originalSubdomain=au), 
 [Soheila Ghane](https://www.linkedin.com/in/soheila-ghane/?originalSubdomain=au)
 
 This work follows from the project with [Geoffrey Mackellar](https://www.emotiv.com/pages/enterprise), a bioinformatics research company based in Australia, and [Emotiv](https://www.emotiv.com/), a global technology company specializing in the development and manufacturing of wearable EEG products.
