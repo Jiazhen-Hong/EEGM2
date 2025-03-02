@@ -1,6 +1,7 @@
 # EEGM2: An Efficient Mamba-2-Based Self-Supervised Framework for Long-Sequence EEG Modeling
 
-**Authors:** <a href="www.linkedin.com/in/jiazhen-hong66" style="text-decoration: none;">Jiazhen Hong</a>, 
+**Authors:** 
+[Jiazhen Hong](www.linkedin.com/in/jiazhen-hong66)
 [Geoffrey Mackellar](https://www.linkedin.com/in/geoffmackellar/?originalSubdomain=au),  
 [Soheila Ghane](https://www.linkedin.com/in/soheila-ghane/?originalSubdomain=au)
 
