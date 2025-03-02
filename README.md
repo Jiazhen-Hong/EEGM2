@@ -8,6 +8,7 @@
 This work follows from the project with [**Emotiv Research**](https://www.emotiv.com/pages/enterprise), a bioinformatics research company based in Australia, and [**Emotiv**](https://www.emotiv.com/), a global technology company specializing in the development and manufacturing of wearable EEG products.
 
 **EEGM2 Paper:** <a href="https://arxiv.org/abs/2502.17873" style="text-decoration: none;">arXiv</a>, 
+![EEGM2 Overview](/Figure/Figure1-arxiv.png)
 
 ## Overview
 **EEGM2** shows superior performance on long-sequence tasks, where conventional models struggle.
