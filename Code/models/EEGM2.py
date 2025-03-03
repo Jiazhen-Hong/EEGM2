@@ -62,7 +62,7 @@ class EEGM2(nn.Module):
         self.encoder3 = nn.Conv1d(128 // self.scale_factor, 256 // self.scale_factor, kernel_size=3, padding=1)
         self.pool3 = nn.MaxPool1d(kernel_size=2, stride=2)
 
-        #bottle
+        #Mediator
         self.bottleneck = nn.Sequential(
             nn.Linear(256 // self.scale_factor, 256 // self.scale_factor),
             SelfSupervisedMambaModel(d_model=256 // self.scale_factor, d_state=d_state, d_conv=d_conv, expand=expand),
