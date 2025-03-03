@@ -50,3 +50,13 @@ EEGMamba/
 └── README.md            # Project overview and documentation
 ```
 
+## **Citation**  
+If you find EEGM2 useful for your research, please consider citing this paper using the following information:
+
+```bibtex
+@article{hong2025eegm2,
+  title={EEGM2: An Efficient Mamba-2-Based Self-Supervised Framework for Long-Sequence EEG Modeling},
+  author={Hong, Jiazhen and Mackellar, Geoffrey and Ghane, Soheila},
+  journal={arXiv preprint arXiv:2502.17873},
+  year={2025}
+}
