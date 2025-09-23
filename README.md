@@ -1,6 +1,8 @@
 # An Efficient Self-Supervised Framework for Long-Sequence EEG Modeling
 
-This repository is anonymized to comply with the triple-blind reviewing policy of the ICDM conference.
+- **2025-06-06**: Repository anonymized to comply with the triple-blind reviewing policy of the ICDM conference.  
+- **2025-09-21**: Paper accepted at the **AI4TS Workshop @ ICDM 2025**.  
+- Paper is in proceedings. Preprint available on [arXiv](https://arxiv.org/abs/2502.17873).
 
 ## Overview
 
